@@ -16,19 +16,5 @@
             "sizes": "512x512",
             "type": "image/png"
         }
-    ],
-    "screenshots": [
-        {
-            "src": "/static/Screenshot_1.png",
-            "sizes": "1918x900",
-            "type": "image/png",
-            "form_factor": "wide"
-        },
-        {
-            "src": "/static/Screenshot_mobile.png",
-            "sizes": "1080x1920",
-            "type": "image/png",
-            "form_factor": "narrow"
-        }
     ]
 }

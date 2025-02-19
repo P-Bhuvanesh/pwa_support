@@ -1,26 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PWA Flask App</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='styles.css') }}"
+    />
+    <link
+      rel="manifest"
+      href="{{ url_for('static', filename='manifest.json') }}"
+    />
     <script defer src="{{ url_for('static', filename='script.js') }}"></script>
-</head>
-<body>
-    <h1>PWA Flask App</h1>
-    <form id="dataForm">
-        <input type="text" id="textInput" placeholder="Enter something" required>
+  </head>
+  <body>
+    <div class="container">
+      <h1>PWA Flask App</h1>
+
+      <form id="dataForm">
+        <input
+          type="text"
+          id="textInput"
+          placeholder="Enter something"
+          required
+        />
         <button type="submit">Send</button>
-    </form>
-    <p id="responseMessage"></p>
+      </form>
+      <p id="responseMessage"></p>
+
+      <!-- Open Camera Button -->
+      <button id="openCameraBtn">📷 Open Camera</button>
+
+      <!-- Camera Container -->
+      <div id="cameraContainer" class="camera-container">
+        <video id="camera" autoplay></video>
+        <button id="switchCameraBtn" class="switch-btn">
+          🔄 Switch Camera
+        </button>
+        <button id="captureBtn" class="capture-btn">📸 Capture</button>
+      </div>
+
+      <!-- Captured Image Display -->
+      <div id="capturedImageContainer" class="captured-container">
+        <h3>Captured Image</h3>
+        <img id="originalImage" alt="Captured Image" />
+        <h3>Processed Image</h3>
+        <img id="processedImage" alt="Processed Image" />
+      </div>
+    </div>
 
     <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/static/service-worker.js')
-                .then(() => console.log('Service Worker Registered'));
-        }
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker
+          .register("/static/service-worker.js")
+          .then(() => console.log("Service Worker Registered"));
+      }
     </script>
-</body>
+  </body>
 </html>
