@@ -1,102 +1,113 @@
-// Handle text input submission
-document.getElementById("dataForm").addEventListener("submit", async function (event) {
-    event.preventDefault();
-    
-    let text = document.getElementById("textInput").value;
-    let responseMessage = document.getElementById("responseMessage");
+if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/static/service-worker.js")
+        .then((registration) => {
+            console.log("Service Worker registered with scope:", registration.scope);
+        })
+        .catch((error) => {
+            console.log("Service Worker registration failed:", error);
+        });
+}
 
-    try {
-        let response = await fetch("/api/data", {
+document.addEventListener("DOMContentLoaded", () => {
+    const captureBtn = document.getElementById("capture-btn");
+    const processBtn = document.getElementById("process-btn");
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const uploadedImage = document.getElementById("uploaded-image");
+    const dropArea = document.getElementById("drop-area");
+    const fileInput = document.getElementById("file-input");
+    let stream = null;
+
+    dropArea.addEventListener("click", () => fileInput.click());
+
+    dropArea.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        dropArea.style.backgroundColor = "#d8ecff";
+    });
+
+    dropArea.addEventListener("dragleave", () => {
+        dropArea.style.backgroundColor = "#e9f5ff";
+    });
+
+    dropArea.addEventListener("drop", (event) => {
+        event.preventDefault();
+        dropArea.style.backgroundColor = "#e9f5ff";
+        if (event.dataTransfer.files.length > 0) {
+            fileInput.files = event.dataTransfer.files;
+            previewImage();
+        }
+    });
+
+    fileInput.addEventListener("change", previewImage);
+
+    function previewImage() {
+        const file = fileInput.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                uploadedImage.src = e.target.result;
+                uploadedImage.classList.remove("hidden");
+                processBtn.disabled = false;
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    // Start webcam stream
+    captureBtn.addEventListener("click", async () => {
+        if (!stream) {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                video.classList.remove("hidden");
+                captureBtn.textContent = "Capture Photo";
+            } catch (err) {
+                console.error("Error accessing webcam:", err);
+                alert("Could not access webcam. Please allow camera permissions.");
+            }
+        } else {
+            // Capture the frame from the video
+            const context = canvas.getContext("2d");
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Convert canvas to an image
+            const imageDataURL = canvas.toDataURL("image/png");
+            uploadedImage.src = imageDataURL;
+            uploadedImage.classList.remove("hidden");
+            processBtn.disabled = false;
+
+            // Stop webcam stream after capturing
+            video.srcObject.getTracks().forEach(track => track.stop());
+            video.classList.add("hidden");
+            captureBtn.textContent = "Capture from Webcam";
+            stream = null;
+        }
+    });
+
+    processBtn.addEventListener("click", async () => {
+        if (!uploadedImage.src) {
+            alert("No image to process!");
+            return;
+        }
+
+        const blob = await fetch(uploadedImage.src).then(res => res.blob());
+        const formData = new FormData();
+        formData.append("image", blob, "captured.png");
+
+        const response = await fetch("/process-image", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text: text })
+            body: formData
         });
 
-        let result = await response.json();
-        responseMessage.innerText = result.message;
-    } catch (error) {
-        responseMessage.innerText = "Error sending data!";
-    }
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            document.getElementById("processed-image").src = url;
+            document.getElementById("processed-image").classList.remove("hidden");
+        } else {
+            console.error("Error processing image:", await response.text());
+        }
+    });
 });
-
-// Camera functionality
-const openCameraBtn = document.getElementById("openCameraBtn");
-const switchCameraBtn = document.getElementById("switchCameraBtn");
-const captureBtn = document.getElementById("captureBtn");
-const video = document.getElementById("camera");
-const cameraContainer = document.getElementById("cameraContainer");
-const canvas = document.createElement("canvas");
-const capturedImage = document.getElementById("originalImage");
-
-let stream = null;
-let useFrontCamera = false; // Default: Use back camera
-
-// Function to start the camera
-async function startCamera() {
-    if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-    }
-
-    const constraints = {
-        video: { facingMode: useFrontCamera ? "user" : "environment" }
-    };
-
-    try {
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-        video.srcObject = stream;
-        video.play();
-
-        cameraContainer.style.display = "flex"; // Show camera container
-        openCameraBtn.style.display = "none"; // Hide open camera button
-    } catch (error) {
-        console.error("Error accessing webcam:", error);
-    }
-}
-
-// Open Camera on Button Click
-openCameraBtn.addEventListener("click", startCamera);
-
-// Switch Camera
-switchCameraBtn.addEventListener("click", function () {
-    useFrontCamera = !useFrontCamera;
-    startCamera(); // Restart the camera with new setting
-});
-
-// Capture Image
-captureBtn.addEventListener("click", function () {
-    const context = canvas.getContext("2d");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    // Stop the camera
-    if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        stream = null;
-    }
-    
-    cameraContainer.style.display = "none"; // Hide camera preview
-    openCameraBtn.style.display = "block"; // Show open camera button again
-
-    // Convert image to Blob and display preview
-    canvas.toBlob(blob => {
-        capturedImage.src = URL.createObjectURL(blob);
-        sendImageToServer(blob);
-    }, "image/png");
-});
-
-// Send image to Flask backend
-function sendImageToServer(file) {
-    const formData = new FormData();
-    formData.append("image", file);
-
-    fetch("/process-image", {
-        method: "POST",
-        body: formData,
-    })
-    .then(response => response.blob())
-    .then(blob => {
-        document.getElementById("processedImage").src = URL.createObjectURL(blob);
-    })
-    .catch(error => console.error("Error processing image:", error));
-}

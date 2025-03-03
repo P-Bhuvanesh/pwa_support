@@ -1,36 +1,61 @@
-from flask import Flask, render_template, request, jsonify, send_file
+from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from fastapi.requests import Request
+from fastapi.responses import Response
+from pydantic import BaseModel
 import cv2
 import numpy as np
 import io
 
-app = Flask(__name__)
+app = FastAPI()
 
-@app.route('/')
-def home():
-    return render_template('index.html')
+# Serve static files and templates
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
 
-@app.route('/api/data', methods=['POST'])
-def get_data():
-    data = request.json.get('text', '')
-    return jsonify({"message": f"Received: {data}"})
+@app.get("/static/service-worker.js", response_class=FileResponse)
+async def service_worker():
+    return FileResponse("static/service-worker.js", media_type="application/javascript")
 
-@app.route('/process-image', methods=['POST'])
-def process_image():
-    file = request.files['image']
-    if not file:
-        return "No file uploaded", 400
+class TextData(BaseModel):
+    text: str
 
-    # Convert to OpenCV format
-    img_stream = file.read()
-    np_img = np.frombuffer(img_stream, np.uint8)
-    img = cv2.imdecode(np_img, cv2.IMREAD_COLOR)
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
-    # Apply Image Processing (Grayscale)
-    processed_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+@app.post("/api/data")
+async def get_data(data: TextData):
+    return {"message": f"Received: {data.text}"}
 
-    # Encode the processed image
-    _, img_encoded = cv2.imencode('.png', processed_img)
-    return send_file(io.BytesIO(img_encoded.tobytes()), mimetype='image/png')
+@app.post("/process-image")
+async def process_image(image: UploadFile = File(...)):
+    if not image:
+        raise HTTPException(status_code=400, detail="No file uploaded")
+
+    try:
+        # Read image content
+        contents = await image.read()
+        np_img = np.frombuffer(contents, np.uint8)
+        img = cv2.imdecode(np_img, cv2.IMREAD_COLOR)
+
+        if img is None:
+            raise HTTPException(status_code=400, detail="Invalid image format")
+
+        # Apply Image Processing (Grayscale)
+        processed_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+        # Encode the processed image
+        _, img_encoded = cv2.imencode('.png', processed_img)
+        
+        # Create response
+        return Response(content=img_encoded.tobytes(), media_type="image/png")
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0",port=8000, ssl_certfile="cert.pem", ssl_keyfile="key.pem" )

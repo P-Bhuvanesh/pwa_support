@@ -1,20 +1,22 @@
 {
-    "name": "Flask PWA",
-    "short_name": "PWAApp",
+    "name": "Image Grayer",
+    "short_name": "ImgProc",
+    "description": "A web app for processing images.",
     "start_url": "/",
     "display": "standalone",
-    "background_color": "#ffffff",
-    "theme_color": "#000000",
+    "background_color": "#224667",
+    "theme_color": "#224667",
     "icons": [
-        {
-            "src": "/static/icon-192.png",
-            "sizes": "192x192",
-            "type": "image/png"
-        },
-        {
-            "src": "/static/icon-512.png",
-            "sizes": "512x512",
-            "type": "image/png"
-        }
+      {
+        "src": "/static/icons/icon-192-trans.png",
+        "sizes": "192x192",
+        "type": "image/png"
+      },
+      {
+        "src": "/static/icons/icon-512.png",
+        "sizes": "512x512",
+        "type": "image/png"
+      }
     ]
-}
+  }
+  

@@ -1,1 +1,6 @@
 \venv
+\bin 
+cert_ssl.pem 
+key_ssl.pem
+requirements.txt
+req.txt
